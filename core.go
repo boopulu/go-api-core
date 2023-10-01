@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -96,5 +97,79 @@ func StartMicroservice(host_address, host_port, id, secret, address, port string
 
 	} else {
 		fmt.Println("Response body:", string(responseBody))
+	}
+}
+
+
+type RPCError struct {
+	Code string
+	Desc string
+}
+
+
+func ParseRPCError(input string) RPCError {
+	// Define a regular expression to match the code and desc fields
+	re := regexp.MustCompile(`code\s*=\s*([^ ]+)\s*desc\s*=\s*([^ ]+)`)
+
+	// Find the matches in the input string
+	matches := re.FindStringSubmatch(input)
+
+	// Check if there are enough submatches (i.e., if both code and desc were found)
+	if len(matches) != 3 {
+		// Handle the case where the input format is invalid
+		return RPCError{
+			Code: "Unknown",
+			Desc: "Invalid input format",
+		}
+	}
+
+	// Extract the code and desc from the submatches
+	code := matches[1]
+	desc := matches[2]
+
+	return RPCError{
+		Code: code,
+		Desc: desc,
+	}
+}
+
+func RpcCodeToHTTPStatus(codeStr string) (int, error) {
+	switch codeStr {
+	case "OK":
+		return http.StatusOK, nil // HTTP 200 OK
+	case "Canceled":
+		return http.StatusRequestTimeout, nil // HTTP 408 Request Timeout
+	case "Unknown":
+		return http.StatusInternalServerError, nil // HTTP 500 Internal Server Error
+	case "InvalidArgument":
+		return http.StatusBadRequest, nil // HTTP 400 Bad Request
+	case "DeadlineExceeded":
+		return http.StatusGatewayTimeout, nil // HTTP 504 Gateway Timeout
+	case "NotFound":
+		return http.StatusNotFound, nil // HTTP 404 Not Found
+	case "AlreadyExists":
+		return http.StatusConflict, nil // HTTP 409 Conflict
+	case "PermissionDenied":
+		return http.StatusForbidden, nil // HTTP 403 Forbidden
+	case "Unauthenticated":
+		return http.StatusUnauthorized, nil // HTTP 401 Unauthorized
+	case "ResourceExhausted":
+		return http.StatusTooManyRequests, nil // HTTP 429 Too Many Requests
+	case "FailedPrecondition":
+		return http.StatusPreconditionFailed, nil // HTTP 412 Precondition Failed
+	case "Aborted":
+		return http.StatusConflict, nil // HTTP 409 Conflict
+	case "OutOfRange":
+		return http.StatusBadRequest, nil // HTTP 400 Bad Request
+	case "Unimplemented":
+		return http.StatusNotImplemented, nil // HTTP 501 Not Implemented
+	case "Internal":
+		return http.StatusInternalServerError, nil // HTTP 500 Internal Server Error
+	case "Unavailable":
+		return http.StatusServiceUnavailable, nil // HTTP 503 Service Unavailable
+	case "DataLoss":
+		return http.StatusBadGateway, nil // HTTP 502 Bad Gateway
+	default:
+		return http.StatusInternalServerError, fmt.Errorf("unrecognized gRPC code: %s", codeStr)
 	}
 }
