@@ -2,7 +2,6 @@ package core
 
 import (
 	"bytes"
-	"database/sql"
 	"fmt"
 	"io"
 	"math/rand"
@@ -14,9 +13,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var (
-	postgresSession *sql.DB
-)
 
 // Create a random string of length `length` consisting of lowercase letters and numbers
 func GenerateSecret(length int) string {
@@ -34,28 +30,6 @@ func GenerateSecret(length int) string {
 	return b.String()
 }
 
-// Initialize the postgres session.
-// URLformat: postgres://user:password@host:port/database
-func InitPostgres(url string) {
-	connStr := url
-
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		panic(err)
-	}
-
-	err = db.Ping()
-	if err != nil {
-		panic(err)
-	}
-
-	postgresSession = db
-}
-
-// Get the postgres session
-func GetPostgresSession() *sql.DB {
-	return postgresSession
-}
 
 // Send a PUT request to the main api, to let it know that this microservice is running
 func StartMicroservice(host_address, host_port, id, secret, address, port string) {
